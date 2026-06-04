@@ -37,7 +37,10 @@ def predict_threat(features):
                 'nb_connections', 'error_rate', 'same_ip_count', 'port_number',
                 'bytes_ratio', 'conn_per_second'
             ]
-            features = np.array([features[f] for f in feature_order])
+            features = np.array([
+    features.get(f, 0)
+    for f in feature_order
+])
         
         # Make prediction
         result = detector.predict(np.array([features]))
@@ -70,7 +73,12 @@ def batch_predict(features_list):
                     'nb_connections', 'error_rate', 'same_ip_count', 'port_number',
                     'bytes_ratio', 'conn_per_second'
                 ]
-                feature_arrays.append([features[f] for f in feature_order])
+                feature_arrays.append(
+    [
+        features.get(f, 0)
+        for f in feature_order
+    ]
+)
             else:
                 feature_arrays.append(features)
         
