@@ -219,9 +219,14 @@ class ThreatDetector:
         import os
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         
-        pickle.dump(self.rf_model, open(model_path, "wb"))
-        pickle.dump(self.iso_model, open(iso_path, "wb"))
-        pickle.dump(self.scaler, open(scaler_path, "wb"))
+        with open(model_path, "wb") as f:
+    pickle.dump(self.rf_model, f)
+
+with open(iso_path, "wb") as f:
+    pickle.dump(self.iso_model, f)
+
+with open(scaler_path, "wb") as f:
+    pickle.dump(self.scaler, f)
         
         self.logger.info(f"Models saved to {model_path}, {iso_path}, {scaler_path}")
     
@@ -241,12 +246,19 @@ class ThreatDetector:
             ThreatDetector: Loaded detector instance
         """
         detector = cls()
-        detector.rf_model = pickle.load(open(model_path, "rb"))
-        detector.iso_model = pickle.load(open(iso_path, "rb"))
-        detector.scaler = pickle.load(open(scaler_path, "rb"))
+        with open(model_path, "rb") as f:
+    detector.rf_model = pickle.load(f)
+
+with open(iso_path, "rb") as f:
+    detector.iso_model = pickle.load(f)
+
+with open(scaler_path, "rb") as f:
+    detector.scaler = pickle.load(f)
         detector.trained = True
         
-        logger.info(f"Models loaded from {model_path}, {iso_path}, {scaler_path}")
+        detector.logger.info(
+    f"Models loaded from {model_path}, {iso_path}, {scaler_path}"
+)
         return detector
 
 
