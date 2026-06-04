@@ -85,7 +85,10 @@ def predict():
             'bytes_ratio', 'conn_per_second'
         ]
         
-        features = np.array([data[f] for f in feature_order])
+        features = np.array([
+    data.get(f, 0)
+    for f in feature_order
+])
         
         # Make prediction
         result = detector.predict(features)
