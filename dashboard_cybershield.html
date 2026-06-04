@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberShield AI v2.0 — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border: #30363d; --text: #e6edf3; --text2: #8b949e;
+  --blue: #58a6ff; --green: #3fb950; --red: #f85149;
+  --orange: #d29922; --purple: #bc8cff; --teal: #39d353;
+  --critical: #ff4757; --high: #ffa502; --medium: #eccc68; --low: #2ed573;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+.header { background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1f2e 100%);
+  border-bottom: 1px solid var(--border); padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo h1 { font-size: 18px; font-weight: 700; }
+.logo span { font-size: 12px; color: var(--text2); }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.live-badge { display: flex; align-items: center; gap: 6px; background: rgba(63,185,80,.15);
+  border: 1px solid rgba(63,185,80,.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: var(--green); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.last-update { font-size: 12px; color: var(--text2); }
+
+/* LAYOUT */
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+/* CARDS */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+/* KPI CARDS */
+.kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.kpi-card.red::before { background: linear-gradient(90deg, var(--red), #ff6b6b); }
+.kpi-card.orange::before { background: linear-gradient(90deg, var(--orange), #ffd43b); }
+.kpi-card.green::before { background: linear-gradient(90deg, var(--green), var(--teal)); }
+.kpi-card.blue::before { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+.kpi-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+.kpi-value { font-size: 32px; font-weight: 800; line-height: 1; }
+.kpi-card.red .kpi-value { color: #ff6b6b; }
+.kpi-card.orange .kpi-value { color: var(--orange); }
+.kpi-card.green .kpi-value { color: var(--green); }
+.kpi-card.blue .kpi-value { color: var(--blue); }
+.kpi-sub { font-size: 11px; color: var(--text2); margin-top: 8px; }
+.kpi-icon { position: absolute; top: 20px; right: 20px; font-size: 28px; opacity: .15; }
+
+/* THREAT LEVEL GAUGE */
+.threat-gauge { text-align: center; }
+.gauge-ring { position: relative; display: inline-block; }
+.gauge-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+.gauge-pct { font-size: 28px; font-weight: 800; color: var(--red); }
+.gauge-txt { font-size: 11px; color: var(--text2); }
+
+/* ALERT BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge.critical { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+.badge.high { background: rgba(210,153,34,.15); color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
+.badge.medium { background: rgba(236,204,104,.15); color: var(--medium); border: 1px solid rgba(236,204,104,.3); }
+.badge.low, .badge.none { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+
+/* ALERTS TABLE */
+.alerts-table { width: 100%; border-collapse: collapse; }
+.alerts-table th { text-align: left; font-size: 11px; color: var(--text2); padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; }
+.alerts-table td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); font-size: 13px; }
+.alerts-table tr:hover td { background: rgba(255,255,255,.02); }
+.ip-tag { font-family: monospace; background: var(--bg3); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--blue); }
+
+/* WINDOWS EVENTS TABLE */
+.event-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(48,54,61,.4); }
+.event-id { font-family: monospace; font-size: 13px; color: var(--purple); min-width: 50px; }
+.event-name { font-size: 13px; flex: 1; }
+.event-count { font-size: 13px; font-weight: 700; color: var(--text); min-width: 60px; text-align: right; }
+.event-bar-wrap { flex: 2; height: 6px; background: var(--bg3); border-radius: 3px; }
+.event-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--blue), var(--purple)); }
+
+/* RISK USERS TABLE */
+.risk-user { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(48,54,61,.4); }
+.risk-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--purple));
+  display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.risk-name { font-size: 13px; flex: 1; }
+.risk-score-wrap { display: flex; align-items: center; gap: 8px; }
+.risk-score { font-size: 14px; font-weight: 800; }
+.risk-bar { height: 4px; border-radius: 2px; }
+
+/* METRICS */
+.metric-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(48,54,61,.4); }
+.metric-name { font-size: 13px; color: var(--text2); }
+.metric-value { font-size: 18px; font-weight: 700; }
+.progress-bar { height: 8px; background: var(--bg3); border-radius: 4px; margin-top: 4px; }
+.progress-fill { height: 8px; border-radius: 4px; }
+
+/* ATTACK TYPE CARDS */
+.attack-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.attack-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.attack-icon { font-size: 24px; margin-bottom: 8px; }
+.attack-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.attack-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+/* SECTION TITLES */
+.section-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* FOOTER */
+.footer { text-align: center; padding: 24px; color: var(--text2); font-size: 12px; border-top: 1px solid var(--border); margin-top: 24px; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; background: var(--bg3); padding: 4px; border-radius: 10px; margin-bottom: 20px; }
+.tab { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all .2s; }
+.tab.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+
+/* CHARTS */
+canvas { max-height: 280px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div>
+      <h1>CyberShield AI v2.0</h1>
+      <span>Système de Détection d'Intrusion — IA & Machine Learning</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div> Surveillance active</div>
+    <div class="last-update">Mise à jour : <span id="clock">--:--:--</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI ROW -->
+  <div class="grid-4" style="margin-bottom:24px">
+    <div class="kpi-card red">
+      <div class="kpi-label">Alertes critiques (24h)</div>
+      <div class="kpi-value" id="kpi-critical">732</div>
+      <div class="kpi-sub">⬆ Tentatives brute-force</div>
+      <div class="kpi-icon">🚨</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Événements Windows</div>
+      <div class="kpi-value" id="kpi-events">10 354</div>
+      <div class="kpi-sub">41 adresses IP distinctes</div>
+      <div class="kpi-icon">📋</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Précision du modèle IA</div>
+      <div class="kpi-value" id="kpi-accuracy">99.62%</div>
+      <div class="kpi-sub">F1-Score : 99.48% (6 classes)</div>
+      <div class="kpi-icon">🎯</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Menaces bloquées</div>
+      <div class="kpi-value" id="kpi-blocked">20</div>
+      <div class="kpi-sub">Isolation Forest actif</div>
+      <div class="kpi-icon">🔒</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('network')">🌐 Trafic Réseau</button>
+    <button class="tab" onclick="showTab('windows')">🪟 Logs Windows</button>
+    <button class="tab" onclick="showTab('model')">🧠 Modèle IA</button>
+    <button class="tab" onclick="showTab('threats')">⚔️ Types d'Attaques</button>
+  </div>
+
+  <!-- TAB: RÉSEAU -->
+  <div id="tab-network">
+    <div class="grid-2">
+      <!-- Graphique trafic temps réel -->
+      <div class="card">
+        <div class="card-title">📈 Trafic réseau simulé (30 dernières secondes)</div>
+        <canvas id="chartTraffic"></canvas>
+      </div>
+      <!-- Répartition des attaques -->
+      <div class="card">
+        <div class="card-title">🥧 Répartition des types d'alertes</div>
+        <canvas id="chartTypes"></canvas>
+      </div>
+    </div>
+
+    <!-- Tableau des alertes -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">🔴 Dernières alertes réseau détectées</div>
+      <table class="alerts-table">
+        <thead>
+          <tr>
+            <th>Heure</th>
+            <th>IP Source</th>
+            <th>Type d'attaque</th>
+            <th>Sévérité</th>
+            <th>Confiance IA</th>
+            <th>Isolation Forest</th>
+          </tr>
+        </thead>
+        <tbody id="alerts-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: WINDOWS -->
+  <div id="tab-windows" style="display:none">
+    <div class="grid-2">
+      <!-- Events Windows -->
+      <div class="card">
+        <div class="card-title">📋 Événements Windows par type (10 354 total)</div>
+        <div id="events-list"></div>
+      </div>
+      <!-- Users à risque -->
+      <div class="card">
+        <div class="card-title">⚠️ Comptes à risque élevé</div>
+        <div id="users-risk-list"></div>
+      </div>
+    </div>
+
+    <!-- Graphique brute-force -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">🔐 Analyse brute-force — Tentatives par compte cible</div>
+      <canvas id="chartBrute"></canvas>
+    </div>
+
+    <!-- Top menaces détectées -->
+    <div class="card">
+      <div class="card-title">🚨 Menaces critiques détectées dans les logs</div>
+      <div id="threats-list"></div>
+    </div>
+  </div>
+
+  <!-- TAB: MODÈLE IA -->
+  <div id="tab-model" style="display:none">
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">📊 Métriques de performance</div>
+        <div class="metric-row">
+          <span class="metric-name">Accuracy globale</span>
+          <span class="metric-value" style="color:var(--green)">99.62%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:99.62%;background:var(--green)"></div></div>
+        <div class="metric-row">
+          <span class="metric-name">F1-Score macro</span>
+          <span class="metric-value" style="color:var(--blue)">99.48%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:99.48%;background:var(--blue)"></div></div>
+        <div class="metric-row">
+          <span class="metric-name">Recall macro</span>
+          <span class="metric-value" style="color:var(--purple)">99.24%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:99.24%;background:var(--purple)"></div></div>
+        <div class="metric-row">
+          <span class="metric-name">Precision macro</span>
+          <span class="metric-value" style="color:var(--orange)">99.73%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:99.73%;background:var(--orange)"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🌳 Paramètres Random Forest</div>
+        <div class="metric-row"><span class="metric-name">Nombre d'arbres</span><span class="metric-value">200</span></div>
+        <div class="metric-row"><span class="metric-name">Profondeur max</span><span class="metric-value">15</span></div>
+        <div class="metric-row"><span class="metric-name">Folds CV</span><span class="metric-value">5</span></div>
+        <div class="metric-row"><span class="metric-name">Enregistrements train</span><span class="metric-value">4 160</span></div>
+        <div class="metric-row"><span class="metric-name">Enregistrements test</span><span class="metric-value">1 040</span></div>
+        <div class="metric-row"><span class="metric-name">Classes détectées</span><span class="metric-value">6</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔍 Résultats par classe</div>
+        <div id="class-results"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📉 Importance des features</div>
+        <canvas id="chartFeatures"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">🕵️ Isolation Forest (anomalies zero-day)</div>
+        <div style="padding:12px 0">
+          <p style="font-size:14px;color:var(--text2);margin-bottom:16px">
+            Détecte les attaques <strong style="color:var(--text)">inconnues</strong> sans exemples préalables.
+            Entraîné uniquement sur le trafic normal. Toute déviation = anomalie.
+          </p>
+          <div class="metric-row"><span class="metric-name">Arbres IF</span><span class="metric-value">120</span></div>
+          <div class="metric-row"><span class="metric-name">Contamination</span><span class="metric-value">8%</span></div>
+          <div class="metric-row"><span class="metric-name">Anomalies détectées</span><span class="metric-value" style="color:var(--red)">5/5</span></div>
+          <div style="margin-top:16px;padding:12px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);border-radius:8px;font-size:13px">
+            ✅ DoS, Intrusion, Malware, Phishing et BruteForce détectés comme anomalies à 100%
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TYPES D'ATTAQUES -->
+  <div id="tab-threats" style="display:none">
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">⚔️ Types d'attaques détectées par le système</div>
+      <div class="attack-grid">
+        <div class="attack-card">
+          <div class="attack-icon">💣</div>
+          <div class="attack-name" style="color:var(--red)">DoS / DDoS</div>
+          <div class="attack-desc">Envoi massif de connexions pour saturer le serveur. Caractérisé par : nb_connections > 700, error_rate > 0.7, durée < 0.1s.</div>
+          <div style="margin-top:8px"><span class="badge critical">CRITIQUE</span></div>
+        </div>
+        <div class="attack-card">
+          <div class="attack-icon">🕵️</div>
+          <div class="attack-name" style="color:var(--orange)">Intrusion</div>
+          <div class="attack-desc">Accès non autorisé via ports sensibles (SSH:22, RDP:3389, SQL:1433). Durée longue, peu de connexions simultanées.</div>
+          <div style="margin-top:8px"><span class="badge high">ÉLEVÉ</span></div>
+        </div>
+        <div class="attack-card">
+          <div class="attack-icon">🦠</div>
+          <div class="attack-name" style="color:var(--purple)">Malware C&C</div>
+          <div class="attack-desc">Communication avec serveur de commande. Trafic symétrique (bytes_ratio ≈ 1), ports suspects (4444, 6667), connexions périodiques.</div>
+          <div style="margin-top:8px"><span class="badge high">ÉLEVÉ</span></div>
+        </div>
+        <div class="attack-card">
+          <div class="attack-icon">🎣</div>
+          <div class="attack-name" style="color:var(--medium)">Phishing</div>
+          <div class="attack-desc">Faux serveur web. Beaucoup de données échangées sur port 80/443, bytes_sent > 1500, durée courte.</div>
+          <div style="margin-top:8px"><span class="badge medium">MOYEN</span></div>
+        </div>
+        <div class="attack-card">
+          <div class="attack-icon">🔐</div>
+          <div class="attack-name" style="color:var(--red)">Brute-Force</div>
+          <div class="attack-desc">Tentatives répétées sur SSH/RDP. 732 échecs détectés dans les logs. Cibles : comptes admin et root.</div>
+          <div style="margin-top:8px"><span class="badge critical">CRITIQUE</span></div>
+        </div>
+        <div class="attack-card">
+          <div class="attack-icon">👻</div>
+          <div class="attack-name" style="color:var(--teal)">Zero-Day (IF)</div>
+          <div class="attack-desc">Attaques inconnues détectées par Isolation Forest. Aucun exemple d'entraînement nécessaire — analyse comportementale pure.</div>
+          <div style="margin-top:8px"><span class="badge critical">CRITIQUE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔗 Architecture DIKW appliquée au projet</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px">
+        <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--blue)">
+          <div style="font-size:11px;color:var(--blue);font-weight:600;margin-bottom:8px">DONNÉE</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Trafic brut</div>
+          <div style="font-size:11px;color:var(--text2)">IP, ports, bytes, durée, logs Windows Event ID</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--purple)">
+          <div style="font-size:11px;color:var(--purple);font-weight:600;margin-bottom:8px">INFORMATION</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Prétraitement</div>
+          <div style="font-size:11px;color:var(--text2)">Normalisation, features dérivées (bytes_ratio, conn/s), encodage</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--orange)">
+          <div style="font-size:11px;color:var(--orange);font-weight:600;margin-bottom:8px">SAVOIR</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Patterns détectés</div>
+          <div style="font-size:11px;color:var(--text2)">Random Forest reconnaît DoS, Intrusion, Malware, Phishing, BruteForce</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--green)">
+          <div style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:8px">DÉCISION</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Alerte + Blocage</div>
+          <div style="font-size:11px;color:var(--text2)">Alerte automatique, score de confiance, stockage SQLite</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  CyberShield AI v2.0 — Département Génie Informatique, Filière CDL — Année 2025-2026 |
+  Encadrant : M. MANI Ayoub | Équipe : Khadija · Imane · Inas · Ikhlas · Douae · Ikram · Alae
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const WINDOWS_EVENTS = [
+  { id: "4672", name: "Privilège élevé attribué", count: 4071, risk: "medium" },
+  { id: "4624", name: "Connexion réussie",        count: 3752, risk: "none" },
+  { id: "4625", name: "Échec de connexion",        count: 732,  risk: "critical" },
+  { id: "4634", name: "Déconnexion",               count: 652,  risk: "none" },
+  { id: "4798", name: "Énumération groupes user",  count: 398,  risk: "high" },
+  { id: "4799", name: "Énumération membres groupe",count: 398,  risk: "high" },
+  { id: "5379", name: "Credentials lus (vault)",   count: 85,   risk: "critical" },
+  { id: "5382", name: "Credential Manager lu",     count: 85,   risk: "critical" },
+  { id: "4616", name: "Heure système modifiée",    count: 77,   risk: "high" },
+  { id: "4738", name: "Compte utilisateur modifié",count: 40,   risk: "medium" },
+  { id: "4720", name: "Compte créé",               count: 25,   risk: "high" },
+  { id: "4722", name: "Compte activé",             count: 25,   risk: "medium" },
+  { id: "4732", name: "Membre ajouté au groupe",   count: 15,   risk: "high" },
+];
+
+const USERS_RISK = [
+  { name: "admin",         score: 1166, color: "#f85149" },
+  { name: "svc_antivirus", score: 393,  color: "#ffa502" },
+  { name: "hnlend",        score: 393,  color: "#ffa502" },
+  { name: "gondoa",        score: 365,  color: "#d29922" },
+  { name: "ntede",         score: 353,  color: "#d29922" },
+  { name: "jfouotsop",     score: 352,  color: "#d29922" },
+  { name: "eatangana",     score: 342,  color: "#d29922" },
+  { name: "svc_backup",    score: 336,  color: "#eccc68" },
+  { name: "system",        score: 331,  color: "#eccc68" },
+];
+
+const CLASS_RESULTS = [
+  { name: "Normal",     precision: 100, recall: 100, f1: 100, support: 600, color: "#3fb950" },
+  { name: "DoS/DDoS",  precision: 100, recall: 100, f1: 100, support: 88,  color: "#f85149" },
+  { name: "Intrusion", precision: 100, recall: 95,  f1: 98,  support: 88,  color: "#ffa502" },
+  { name: "Malware",   precision: 99,  recall: 100, f1: 99,  support: 88,  color: "#bc8cff" },
+  { name: "Phishing",  precision: 100, recall: 100, f1: 100, support: 88,  color: "#eccc68" },
+  { name: "BruteForce",precision: 100, recall: 100, f1: 100, support: 88,  color: "#ff6b81" },
+];
+
+const THREATS_WINDOWS = [
+  { type: "BruteForce",       target: "admin",         severity: "CRITIQUE", score: 1164, desc: "Brute-force sur 'admin' : 388 échecs (pic de 20+ en 5 min)" },
+  { type: "BruteForce",       target: "root",          severity: "CRITIQUE", score: 1032, desc: "Brute-force sur 'root' : 344 échecs" },
+  { type: "CredentialAccess", target: "svc_antivirus", severity: "CRITIQUE", score: 425,  desc: "Accès Credential Manager : svc_antivirus (85 lectures)" },
+  { type: "PrivilegeAbuse",   target: "admin",         severity: "ÉLEVÉ",    score: 238,  desc: "Utilisation anormale de privilèges : admin (2385 événements)" },
+  { type: "Reconnaissance",   target: "admin",         severity: "ÉLEVÉ",    score: 79,   desc: "Reconnaissance : admin a énuméré 398 comptes/groupes" },
+  { type: "Persistence",      target: "system",        severity: "ÉLEVÉ",    score: 50,   desc: "Création de comptes : 25 nouveaux comptes créés et activés" },
+];
+
+const SIMULATED_ALERTS = [
+  { time: "11:58:32", ip: "10.0.3.170", type: "BruteForce", sev: "critical", conf: 100.0, iso: true },
+  { time: "11:57:14", ip: "10.0.4.51",  type: "DoS/DDoS",   sev: "critical", conf: 100.0, iso: true },
+  { time: "11:55:09", ip: "10.0.2.204", type: "Intrusion",   sev: "high",     conf: 98.2,  iso: true },
+  { time: "11:52:41", ip: "185.220.101.56", type: "Malware", sev: "high",     conf: 100.0, iso: true },
+  { time: "11:49:03", ip: "10.0.5.77",  type: "BruteForce", sev: "critical", conf: 100.0, iso: true },
+  { time: "11:45:22", ip: "10.0.3.19",  type: "Phishing",   sev: "medium",   conf: 100.0, iso: true },
+  { time: "11:42:17", ip: "10.0.4.88",  type: "Intrusion",  sev: "high",     conf: 95.1,  iso: false },
+  { time: "11:38:55", ip: "45.33.32.156", type: "DoS/DDoS", sev: "critical", conf: 100.0, iso: true },
+];
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR');
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function showTab(t) {
+  ['network','windows','model','threats'].forEach(id => {
+    document.getElementById('tab-'+id).style.display = id===t ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((btn,i) => {
+    btn.classList.toggle('active', ['network','windows','model','threats'][i]===t);
+  });
+}
+
+// ── RENDER ALERTS TABLE ───────────────────────────────────────────────────────
+function renderAlerts() {
+  const tbody = document.getElementById('alerts-tbody');
+  const sevLabel = { critical: "CRITIQUE", high: "ÉLEVÉ", medium: "MOYEN" };
+  tbody.innerHTML = SIMULATED_ALERTS.map(a => `
+    <tr>
+      <td style="font-family:monospace;color:var(--text2)">${a.time}</td>
+      <td><span class="ip-tag">${a.ip}</span></td>
+      <td style="font-weight:600">${a.type}</td>
+      <td><span class="badge ${a.sev}">${sevLabel[a.sev]||a.sev}</span></td>
+      <td style="font-weight:700;color:${a.conf>=99?'#3fb950':a.conf>=90?'#d29922':'#ffa502'}">${a.conf.toFixed(1)}%</td>
+      <td>${a.iso ? '<span class="badge critical">⚠ ANOMALIE</span>' : '<span class="badge none">✓ OK</span>'}</td>
+    </tr>`).join('');
+}
+
+// ── RENDER WINDOWS EVENTS ─────────────────────────────────────────────────────
+function renderEvents() {
+  const maxCount = Math.max(...WINDOWS_EVENTS.map(e=>e.count));
+  const riskColor = { critical:'#f85149', high:'#ffa502', medium:'#d29922', none:'#3fb950' };
+  document.getElementById('events-list').innerHTML = WINDOWS_EVENTS.map(e => `
+    <div class="event-row">
+      <span class="event-id">${e.id}</span>
+      <span class="event-name">${e.name}</span>
+      <div class="event-bar-wrap"><div class="event-bar" style="width:${e.count/maxCount*100}%;background:${riskColor[e.risk]}40;border:1px solid ${riskColor[e.risk]}60"></div></div>
+      <span class="event-count" style="color:${riskColor[e.risk]}">${e.count.toLocaleString()}</span>
+    </div>`).join('');
+}
+
+// ── RENDER USERS RISK ─────────────────────────────────────────────────────────
+function renderUsersRisk() {
+  const maxScore = USERS_RISK[0].score;
+  document.getElementById('users-risk-list').innerHTML = USERS_RISK.map(u => `
+    <div class="risk-user">
+      <div class="risk-avatar" style="background:${u.color}33;color:${u.color}">${u.name[0].toUpperCase()}</div>
+      <div style="flex:1">
+        <div class="risk-name">${u.name}</div>
+        <div style="height:4px;background:var(--bg3);border-radius:2px;margin-top:4px">
+          <div style="height:4px;width:${u.score/maxScore*100}%;background:${u.color};border-radius:2px"></div>
+        </div>
+      </div>
+      <div class="risk-score-wrap">
+        <span class="risk-score" style="color:${u.color}">${u.score}</span>
+        <span style="font-size:11px;color:var(--text2)">pts</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER CLASS RESULTS ──────────────────────────────────────────────────────
+function renderClassResults() {
+  document.getElementById('class-results').innerHTML = CLASS_RESULTS.map(c => `
+    <div class="metric-row" style="padding:8px 0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:${c.color}">${c.name}</div>
+        <div style="font-size:11px;color:var(--text2)">support: ${c.support}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:14px;font-weight:700;color:${c.color}">${c.f1}%</div>
+        <div style="font-size:11px;color:var(--text2)">F1-Score</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER THREATS ────────────────────────────────────────────────────────────
+function renderThreats() {
+  const sevColor = { CRITIQUE: "#f85149", ÉLEVÉ: "#ffa502", MOYEN: "#d29922" };
+  const icons = { BruteForce: "🔐", CredentialAccess: "🗝️", PrivilegeAbuse: "👑", Reconnaissance: "🔭", Persistence: "🕰️" };
+  document.getElementById('threats-list').innerHTML = THREATS_WINDOWS.map(t => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(48,54,61,.4)">
+      <div style="font-size:24px">${icons[t.type]||'⚠'}</div>
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600;color:${sevColor[t.severity]}">[${t.type}]</span>
+          <span class="badge ${t.severity==='CRITIQUE'?'critical':'high'}">${t.severity}</span>
+          <span style="font-size:11px;color:var(--text2)">cible : ${t.target}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2)">${t.desc}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:800;color:${sevColor[t.severity]}">${t.score}</div>
+        <div style="font-size:10px;color:var(--text2)">score risque</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+const chartOpts = {
+  responsive: true,
+  plugins: { legend: { labels: { color: '#8b949e', font: { size: 12 } } } },
+  scales: {
+    x: { ticks: { color: '#8b949e', font:{size:11} }, grid: { color: 'rgba(48,54,61,.5)' } },
+    y: { ticks: { color: '#8b949e', font:{size:11} }, grid: { color: 'rgba(48,54,61,.5)' } }
+  }
+};
+
+// Trafic temps réel
+const labels30 = Array.from({length:30},(_,i)=>`-${29-i}s`);
+const normalData = labels30.map(()=>Math.round(Math.random()*30+70));
+const attackData = labels30.map(()=>Math.random()<.3?Math.round(Math.random()*15+1):0);
+const ctxTraffic = document.getElementById('chartTraffic').getContext('2d');
+const chartTraffic = new Chart(ctxTraffic, {
+  type:'line',
+  data: {
+    labels: labels30,
+    datasets: [
+      { label:'Normal', data: normalData, borderColor:'#3fb950', backgroundColor:'rgba(63,185,80,.1)', fill:true, tension:.4, pointRadius:2 },
+      { label:'Attaques', data: attackData, borderColor:'#f85149', backgroundColor:'rgba(248,81,73,.15)', fill:true, tension:.4, pointRadius:3 }
+    ]
+  },
+  options: { ...chartOpts, animation:{duration:0} }
+});
+
+// Simulation trafic live
+setInterval(() => {
+  chartTraffic.data.datasets[0].data.push(Math.round(Math.random()*30+70));
+  chartTraffic.data.datasets[0].data.shift();
+  chartTraffic.data.datasets[1].data.push(Math.random()<.25?Math.round(Math.random()*20+2):0);
+  chartTraffic.data.datasets[1].data.shift();
+  chartTraffic.update('none');
+}, 1500);
+
+// Répartition
+const ctxTypes = document.getElementById('chartTypes').getContext('2d');
+new Chart(ctxTypes, {
+  type:'doughnut',
+  data: {
+    labels: ['Normal','BruteForce','DoS/DDoS','Intrusion','Malware','Phishing'],
+    datasets:[{ data:[59,14,11,7,5,4], backgroundColor:['#3fb950','#f85149','#ff4757','#ffa502','#bc8cff','#eccc68'], borderWidth:0, hoverOffset:6 }]
+  },
+  options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ color:'#8b949e', padding:12, font:{size:11} } } } }
+});
+
+// Brute-force
+const ctxBrute = document.getElementById('chartBrute').getContext('2d');
+new Chart(ctxBrute, {
+  type:'bar',
+  data: {
+    labels: ['admin','root'],
+    datasets:[{ label:'Échecs connexion (Event 4625)', data:[388,344], backgroundColor:['rgba(248,81,73,.7)','rgba(255,107,130,.7)'], borderColor:['#f85149','#ff6b82'], borderWidth:1, borderRadius:6 }]
+  },
+  options: { ...chartOpts, plugins:{ legend:{ labels:{ color:'#8b949e' } } } }
+});
+
+// Feature importance
+const ctxFeat = document.getElementById('chartFeatures').getContext('2d');
+new Chart(ctxFeat, {
+  type:'bar',
+  data: {
+    labels: ['same_ip_count','bytes_received','nb_connections','bytes_sent','conn_per_second','error_rate','duration','port_number','bytes_ratio','protocol_type'],
+    datasets:[{ label:'Importance (%)', data:[18.0,17.9,16.7,14.8,11.1,9.6,5.4,4.5,1.9,0.1], backgroundColor:'rgba(88,166,255,.6)', borderColor:'#58a6ff', borderWidth:1, borderRadius:4 }]
+  },
+  options: { ...chartOpts, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{color:'#8b949e',callback:v=>v+'%'}, grid:{color:'rgba(48,54,61,.5)'} }, y:{ ticks:{color:'#8b949e',font:{size:11}}, grid:{color:'rgba(48,54,61,.5)'} } } }
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderAlerts();
+renderEvents();
+renderUsersRisk();
+renderClassResults();
+renderThreats();
+</script>
+</body>
+</html>
