@@ -177,6 +177,10 @@ def analyze_logs():
     """
     try:
         data = request.get_json()
+        if not data:
+    return jsonify(
+        {"error": "No JSON data provided"}
+    ), 400
         csv_path = data.get('csv_path')
         
         if not csv_path or not os.path.exists(csv_path):
